@@ -83,7 +83,7 @@ public class ConnectionRunnable implements Runnable {
             if (port < 0) {
                 return;
             }
-            listener.peerAddressFromPeer(ip, port, listener.getServerIp() + ":" + listener.getServerPort());
+            listener.peerAddressFromPeer(ip, port, socket.getInetAddress().getHostAddress() + ":" + socket.getPort());
         }
     }
 
