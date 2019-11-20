@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.Socket;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 
 class NodeTest {
@@ -13,7 +14,7 @@ class NodeTest {
     private static ArrayList<Node> normalNodes;
 
     @BeforeAll
-    static void initTest() {
+    static void initTest() throws UnknownHostException {
         seedNodes = new ArrayList<>();
         seedNodes.add(new Node());
         for (Node node : seedNodes) {
@@ -22,7 +23,7 @@ class NodeTest {
     }
 
     @Test
-    void newNodeJoinTest() {
+    void newNodeJoinTest() throws UnknownHostException {
         normalNodes = new ArrayList<>();
         normalNodes.add(new Node(1234));
         normalNodes.add(new Node(1235));

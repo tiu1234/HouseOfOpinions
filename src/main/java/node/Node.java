@@ -9,29 +9,17 @@ public class Node implements NodeEventListener {
     private static final List<String> SEED_ADDRESSES = Collections.unmodifiableList(
             Arrays.asList("10.0.0.5"));
     private static final int SEED_PORT = 1050;
-    private ThreadPooledServer serverPool;
-    private ThreadPooledClient clientPool;
+    private final ThreadPooledServer serverPool;
+    private final ThreadPooledClient clientPool;
     private final HashMap<String, PeerNode> peerNodes = new HashMap<>();
 
-    public Node() {
-        try {
-            serverPool = new ThreadPooledServer(InetAddress.getLocalHost().getHostAddress(), this);
-        } catch (UnknownHostException e) {
-            System.out.println("Failed to create server pool!");
-        }
-        init();
+    public Node() throws UnknownHostException {
+        serverPool = new ThreadPooledServer(InetAddress.getLocalHost().getHostAddress(), this);
+        clientPool = new ThreadPooledClient(this);
     }
 
-    public Node(int port) {
-        try {
-            serverPool = new ThreadPooledServer(InetAddress.getLocalHost().getHostAddress(), port, this);
-        } catch (UnknownHostException e) {
-            System.out.println("Failed to create server pool!");
-        }
-        init();
-    }
-
-    private void init() {
+    public Node(int port) throws UnknownHostException {
+        serverPool = new ThreadPooledServer(InetAddress.getLocalHost().getHostAddress(), port, this);
         clientPool = new ThreadPooledClient(this);
     }
 

@@ -10,12 +10,12 @@ public class ThreadPooledServer implements Runnable {
 
     protected final Node curNode;
     protected final String serverIP;
+    protected final ExecutorService threadPool =
+            Executors.newFixedThreadPool(10);
     protected int serverPort = 1050;
     protected ServerSocket serverSocket = null;
     protected boolean isStopped = false;
     protected Thread runningThread = null;
-    protected ExecutorService threadPool =
-            Executors.newFixedThreadPool(10);
 
     public ThreadPooledServer(String ip, Node node) {
         curNode = node;

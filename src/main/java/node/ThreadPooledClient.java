@@ -8,7 +8,7 @@ import java.util.concurrent.Executors;
 public class ThreadPooledClient {
 
     protected final Node curNode;
-    protected ExecutorService threadPool =
+    protected final ExecutorService threadPool =
             Executors.newFixedThreadPool(10);
 
     public ThreadPooledClient(Node node) {
@@ -31,5 +31,4 @@ public class ThreadPooledClient {
     public void stop() {
         threadPool.shutdown();
     }
-
 }
