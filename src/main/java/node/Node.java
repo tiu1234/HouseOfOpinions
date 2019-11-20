@@ -155,7 +155,7 @@ public class Node implements NodeEventListener {
 
     private void connectToPeer(String ip, int port) throws IOException {
         ConnectionRunnable thread = clientPool.connectToNew(ip, port);
-        peerNodes.put(ip + ":" + SEED_PORT, new PeerNode(ip, SEED_PORT, thread));
+        peerNodes.put(ip + ":" + port, new PeerNode(ip, port, thread));
         thread.sendMyAddressToPeer(getServerIp(), getServerPort());
     }
 
