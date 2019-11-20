@@ -45,7 +45,6 @@ public class ConnectionRunnable implements Runnable {
             } catch (IOException e) {
                 System.out.println("Error closing!");
             }
-            this.stop();
             if (threadKey != null) {
                 listener.removeThread(threadKey);
             }
@@ -73,25 +72,14 @@ public class ConnectionRunnable implements Runnable {
         //System.out.println("Received: " + msg);
         if (msg.startsWith("My IP")) {
             String ip = getIPFromMsg(msg);
-            if (ip == null) {
-                return;
-            }
             int port = getPortFromMsg(msg);
-            if (port < 0) {
-                return;
-            }
             listener.curAddressFromPeer(ip, port, this);
         } else if (msg.startsWith("Peer IP")) {
             String ip = getIPFromMsg(msg);
-            if (ip == null) {
-                return;
-            }
             int port = getPortFromMsg(msg);
-            if (port < 0) {
-                return;
-            }
             listener.peerAddressFromPeer(ip, port, socket.getInetAddress().getHostAddress() + ":" + socket.getPort());
         }
+        throw new IOException("Bad data!");
     }
 
     private String getIPFromMsg(String msg) throws IOException {
@@ -99,14 +87,14 @@ public class ConnectionRunnable implements Runnable {
         if (ipInfo.length == 3) {
             String ip = ipInfo[1];
             if (!isValidAddress(ip)) {
-                return null;
+                throw new IOException("Bad data!");
             }
             return ip;
         }
-        return null;
+        throw new IOException("Bad data!");
     }
 
-    private int getPortFromMsg(String msg) {
+    private int getPortFromMsg(String msg) throws IOException {
         String[] ipInfo = msg.split(":");
         if (ipInfo.length == 3) {
             String portStr = ipInfo[2];
@@ -114,14 +102,14 @@ public class ConnectionRunnable implements Runnable {
             try {
                 port = Integer.parseInt(portStr);
             } catch (NumberFormatException e) {
-                return -1;
+                throw new IOException("Bad data!");
             }
             if (port <= 0 || port > 65535) {
-                return -1;
+                throw new IOException("Bad data!");
             }
             return port;
         }
-        return -1;
+        throw new IOException("Bad data!");
     }
 
     private boolean isValidAddress(String ip) throws UnknownHostException {

@@ -110,7 +110,7 @@ public class Node implements NodeEventListener {
         synchronized (peerNodes) {
             if (peerNodes.containsKey(threadKey)) {
                 peerNodes.remove(threadKey);
-                System.out.println(threadKey + "Removed");
+                System.out.println(threadKey + " removed!");
             }
         }
     }
