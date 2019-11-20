@@ -5,7 +5,5 @@ public interface NodeEventListener {
 
     void peerAddressFromPeer(String ip, int port, String source);
 
-    String getServerIp();
-
-    int getServerPort();
+    void removeThread(String threadKey);
 }

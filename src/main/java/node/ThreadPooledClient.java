@@ -20,9 +20,10 @@ public class ThreadPooledClient {
         try {
             serverSocket = new Socket(ip, serverPort);
         } catch (IOException e) {
-            e.printStackTrace();
+            throw new RuntimeException(
+                    "Error connecting to server", e);
         }
-        ConnectionRunnable thread = new ConnectionRunnable(serverSocket, curNode);
+        ConnectionRunnable thread = new ConnectionRunnable(serverSocket, ip + ":" + serverPort, curNode);
         threadPool.execute(thread);
         return thread;
     }

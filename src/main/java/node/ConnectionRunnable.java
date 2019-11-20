@@ -1,6 +1,8 @@
 package node;
 
-import java.io.*;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.net.UnknownHostException;
@@ -12,10 +14,12 @@ public class ConnectionRunnable implements Runnable {
     protected Socket socket = null;
     protected DataInputStream input;
     protected DataOutputStream output;
+    protected String threadKey = null;
 
-    public ConnectionRunnable(Socket socket, NodeEventListener listener) throws IOException {
+    public ConnectionRunnable(Socket socket, String threadKey, NodeEventListener listener) throws IOException {
         this.socket = socket;
         this.listener = listener;
+        this.threadKey = threadKey;
         input = new DataInputStream(socket.getInputStream());
         output = new DataOutputStream(socket.getOutputStream());
     }
@@ -38,10 +42,13 @@ public class ConnectionRunnable implements Runnable {
                     input.close();
                 }
                 socket.close();
-            } catch(IOException e){
+            } catch (IOException e) {
                 System.out.println("Error closing!");
             }
             this.stop();
+            if (threadKey != null) {
+                listener.removeThread(threadKey);
+            }
         }
     }
 
@@ -87,7 +94,7 @@ public class ConnectionRunnable implements Runnable {
         }
     }
 
-    private String getIPFromMsg(String msg) throws UnknownHostException {
+    private String getIPFromMsg(String msg) throws IOException {
         String[] ipInfo = msg.split(":");
         if (ipInfo.length == 3) {
             String ip = ipInfo[1];
@@ -103,7 +110,12 @@ public class ConnectionRunnable implements Runnable {
         String[] ipInfo = msg.split(":");
         if (ipInfo.length == 3) {
             String portStr = ipInfo[2];
-            int port = Integer.parseInt(portStr);
+            int port = -1;
+            try {
+                port = Integer.parseInt(portStr);
+            } catch (NumberFormatException e) {
+                return -1;
+            }
             if (port <= 0 || port > 65535) {
                 return -1;
             }
@@ -114,5 +126,9 @@ public class ConnectionRunnable implements Runnable {
 
     private boolean isValidAddress(String ip) throws UnknownHostException {
         return InetAddress.getByName(ip).getHostAddress().equals(ip);
+    }
+
+    public void setThreadKey(String threadKey) {
+        this.threadKey = threadKey;
     }
 }

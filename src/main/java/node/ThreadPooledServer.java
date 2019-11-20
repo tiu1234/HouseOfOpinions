@@ -1,8 +1,8 @@
 package node;
 
+import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.io.IOException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -48,7 +48,7 @@ public class ThreadPooledServer implements Runnable {
             }
             try {
                 this.threadPool.execute(
-                        new ConnectionRunnable(clientSocket, curNode));
+                        new ConnectionRunnable(clientSocket, null, curNode));
             } catch (IOException e) {
                 System.out.println("Failed to start thread");
             }

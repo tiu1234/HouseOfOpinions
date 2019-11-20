@@ -45,11 +45,7 @@ public class Node implements NodeEventListener {
             return;
         }
 
-        try {
-            connectToPeers();
-        } catch (IOException e) {
-            System.out.println("Failed to connect to peers!");
-        }
+        connectToPeers();
     }
 
     @Override
@@ -67,9 +63,11 @@ public class Node implements NodeEventListener {
             System.out.println(msg);
             if (!peerNodes.containsKey(key)) {
                 peerNodes.put(key, new PeerNode(ip, port, thread));
+                thread.setThreadKey(key);
                 informOtherPeers = true;
             } else {
                 peerNodes.get(key).setThread(thread);
+                thread.setThreadKey(key);
             }
         }
 
@@ -108,11 +106,19 @@ public class Node implements NodeEventListener {
     }
 
     @Override
+    public void removeThread(String threadKey) {
+        synchronized (peerNodes) {
+            if (peerNodes.containsKey(threadKey)) {
+                peerNodes.remove(threadKey);
+                System.out.println(threadKey + "Removed");
+            }
+        }
+    }
+
     public String getServerIp() {
         return serverPool.getServerIp();
     }
 
-    @Override
     public int getServerPort() {
         return serverPool.getServerPort();
     }
@@ -145,10 +151,19 @@ public class Node implements NodeEventListener {
         }
     }
 
-    private void connectToPeers() throws IOException {
+    private void connectToPeers() {
         synchronized (peerNodes) {
+            ArrayList<String> failedPeersKey = new ArrayList<>();
             for (Map.Entry<String, PeerNode> set : peerNodes.entrySet()) {
-                connectToPeer(set.getValue().getIp(), set.getValue().getPort());
+                try {
+                    connectToPeer(set.getValue().getIp(), set.getValue().getPort());
+                } catch (IOException e) {
+                    System.out.println("Failed to connect to " + set.getKey());
+                    failedPeersKey.add(set.getKey());
+                }
+            }
+            for (String failedKey : failedPeersKey) {
+                peerNodes.remove(failedKey);
             }
         }
     }
