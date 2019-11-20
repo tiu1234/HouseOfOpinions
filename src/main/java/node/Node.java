@@ -61,13 +61,15 @@ public class Node implements NodeEventListener {
         boolean informOtherPeers = false;
         synchronized (peerNodes) {
             String msg = "\n--------------\n"
-                    + "Cur Address " + getServerIp() + ":" + getServerPort() + "\n"
-                    + "New Peer " + key + "\n"
+                    + "Node Address " + getServerIp() + ":" + getServerPort() + "\n"
+                    + "New Cur " + key + "\n"
                     + "--------------";
             System.out.println(msg);
             if (!peerNodes.containsKey(key)) {
                 peerNodes.put(key, new PeerNode(ip, port, thread));
                 informOtherPeers = true;
+            } else {
+                peerNodes.get(key).setThread(thread);
             }
         }
 
@@ -86,7 +88,7 @@ public class Node implements NodeEventListener {
 
         synchronized (peerNodes) {
             String msg = "\n--------------\n"
-                    + "Cur Address " + getServerIp() + ":" + getServerPort() + "\n"
+                    + "Node Address " + getServerIp() + ":" + getServerPort() + "\n"
                     + "New Peer " + key + "\n"
                     + "--------------";
             System.out.println(msg);

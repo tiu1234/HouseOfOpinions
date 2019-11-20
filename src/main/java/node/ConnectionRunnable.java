@@ -28,7 +28,7 @@ public class ConnectionRunnable implements Runnable {
             }
 
         } catch (IOException e) {
-            e.printStackTrace();
+            System.out.println("Connection closed " + socket.getInetAddress().getHostAddress() + ":" + socket.getPort());
         } finally {
             try {
                 if (output != null) {
