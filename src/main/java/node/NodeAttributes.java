@@ -1,8 +1,8 @@
 package node;
 
 public class NodeAttributes {
-    protected final String ip;
-    protected final int port;
+    protected String ip;
+    protected int port;
     protected int latency;
 
     public NodeAttributes(String ip, int port) {
@@ -14,8 +14,16 @@ public class NodeAttributes {
         return ip;
     }
 
+    public void setIp(String ip) {
+        this.ip = ip;
+    }
+
     public int getPort() {
         return port;
+    }
+
+    public void setPort(int port) {
+        this.port = port;
     }
 
     public int getLatency() {
