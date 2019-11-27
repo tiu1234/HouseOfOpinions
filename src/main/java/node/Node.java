@@ -66,7 +66,6 @@ public class Node implements ConnectionEventListener {
         }
     }
 
-    //TODO implement a heart beat task
     public void checkClosedPeers() {
         final ArrayList<String> remove = new ArrayList<>();
 
@@ -156,10 +155,13 @@ public class Node implements ConnectionEventListener {
     @Override
     public void connComplete(AsynchronousSocketChannel socketChannel) {
         final String key = getSocketKey(socketChannel);
-        if (key == null) {
+        final String ip = getServerIp(socketChannel);
+        final int port = getServerPort(socketChannel);
+        if (key == null || !ipWaitResponse.contains(ip + ":" + port)) {
             shutDownConnection(socketChannel);
             return;
         }
+        ipWaitResponse.remove(ip + ":" + port);
 
         try {
             final IPPackage ipPackage = new IPPackage(PackageHeader.MY_IP, localIP, localPort);
@@ -170,9 +172,6 @@ public class Node implements ConnectionEventListener {
         }
 
         //TODO validation process of my address
-        final String ip = getServerIp(socketChannel);
-        final int port = getServerPort(socketChannel);
-        ipWaitResponse.remove(ip + ":" + port);
         PeerNode peer = new PeerNode(socketChannel, ip, port, TimeOutCallable.STABLE_TIME_OUT);
         stablePeers.put(key, peer);
         ipPeers.put(ip + ":" + port, peer);
@@ -315,18 +314,14 @@ public class Node implements ConnectionEventListener {
                         }
                         final String ip = ipPackage.getIp();
                         final int port = ipPackage.getPort();
-                        if (ipWaitResponse.contains(ip + ":" + port)) {
-                            if (localIP.compareTo(ip) < 0 ) {
+                        System.out.println("New IP from " + key + " : " + ip + ":" + port);
+                        ipWaitResponse.remove(ip + ":" + port);
+                        if (ipPeers.containsKey(ip + ":" + port)) {
+                            if (localIP.compareTo(ip) > 0 || (localIP.compareTo(ip) == 0 && localPort > port)) {
                                 shutDownConnection(socketChannel);
                                 break;
-                            } else if (localIP.compareTo(ip) == 0) {
-                                if (localPort <= port) {
-                                    shutDownConnection(socketChannel);
-                                    break;
-                                }
                             }
-                        }
-                        if (ipPeers.containsKey(ip + ":" + port)) {
+                            System.out.println("New IP from " + key + " : " + ip + ":" + port + " overwrites old one");
                             final AsynchronousSocketChannel stableChannel = ipPeers.get(ip + ":" + port).getSocketChannel();
                             final String stableKey = getSocketKey(stableChannel);
                             shutDownConnection(stableChannel);
@@ -420,5 +415,17 @@ public class Node implements ConnectionEventListener {
 
     public int getLocalPort() {
         return localPort;
+    }
+
+    public HashMap<String, PeerNode> getStablePeers() {
+        return stablePeers;
+    }
+
+    public HashMap<String, PeerNode> getIpPeers() {
+        return ipPeers;
+    }
+
+    public HashMap<String, PeerNode> getUnknownPeers() {
+        return unknownPeers;
     }
 }

@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 
 class NodeTest {
+    private static final int NORMAL_NUM = 20;
     private static ArrayList<Node> seedNodes;
     private static ArrayList<Node> normalNodes;
 
@@ -22,7 +23,7 @@ class NodeTest {
     @Test
     void newNodeJoinTest() throws IOException {
         normalNodes = new ArrayList<>();
-        for (int i = 0; i < 7; i++) {
+        for (int i = 0; i < NORMAL_NUM; i++) {
             normalNodes.add(new Node(1230 + i));
         }
 
@@ -34,6 +35,18 @@ class NodeTest {
             Thread.sleep(10 * 1000);
         } catch (InterruptedException e) {
             e.printStackTrace();
+        }
+
+        for (Node node : seedNodes) {
+            assert node.getStablePeers().size() == NORMAL_NUM;
+            assert node.getIpPeers().size() == NORMAL_NUM;
+            assert node.getUnknownPeers().size() == 0;
+        }
+
+        for (Node node : normalNodes) {
+            assert node.getStablePeers().size() == NORMAL_NUM;
+            assert node.getIpPeers().size() == NORMAL_NUM;
+            assert node.getUnknownPeers().size() == 0;
         }
     }
 
