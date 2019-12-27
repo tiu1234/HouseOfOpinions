@@ -1,21 +1,29 @@
 package node.nodepackage;
 
+import java.util.ArrayList;
+
 public class IPPackage extends Package {
     private static final long serialVersionUID = 3092401656804136720L;
-    private final String ip;
-    private final int port;
+    private final ArrayList<IpInfo> ips;
 
-    public IPPackage(PackageHeader header, String ip, int port) {
+    public IPPackage(PackageHeader header) {
         super(header);
-        this.ip = ip;
-        this.port = port;
+        this.ips = new ArrayList<>();
     }
 
-    public String getIp() {
-        return ip;
+    public void addIp(String ip, int port) {
+        ips.add(new IpInfo(ip, port));
     }
 
-    public int getPort() {
-        return port;
+    public void addIp(IpInfo ipInfo) {
+        ips.add(ipInfo);
+    }
+
+    public void addIps(ArrayList<IpInfo> ipInfoList) {
+        ips.addAll(ipInfoList);
+    }
+
+    public ArrayList<IpInfo> getIps() {
+        return ips;
     }
 }

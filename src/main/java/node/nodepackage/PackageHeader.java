@@ -3,7 +3,8 @@ package node.nodepackage;
 public enum PackageHeader {
     HEART_BEAT("Heart Beat"),
     MY_IP("My IP"),
-    PEER_IP("Peer IP");
+    PEER_IPS("Peer IPs"),
+    REQUEST_FOR_PEERS("Request for peers");
 
     private final String content;
 

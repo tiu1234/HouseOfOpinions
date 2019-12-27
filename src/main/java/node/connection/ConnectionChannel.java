@@ -107,6 +107,8 @@ public class ConnectionChannel {
 
     public void forceStop() throws IOException {
         serverSocketChannel.close();
+        while (serverSocketChannel.isOpen()) {
+        }
     }
 
     public ExecutorService getExecutorService() {

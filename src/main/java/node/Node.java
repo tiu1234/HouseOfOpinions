@@ -4,8 +4,8 @@ import node.connection.ByteBufferUtil;
 import node.connection.ConnectionChannel;
 import node.connection.ConnectionEventListener;
 import node.nodepackage.IPPackage;
+import node.nodepackage.IpInfo;
 import node.nodepackage.Package;
-import node.nodepackage.PackageHeader;
 
 import java.io.IOException;
 import java.net.InetAddress;
@@ -16,6 +16,8 @@ import java.util.*;
 
 import static node.HeartBeatCallable.calNextHeartBeat;
 import static node.connection.ConnectionChannel.startWrite;
+import static node.nodepackage.PackageHeader.MY_IP;
+import static node.nodepackage.PackageHeader.PEER_IPS;
 
 public class Node implements ConnectionEventListener {
     //TODO seed addresses will be loaded from a config file
@@ -24,12 +26,10 @@ public class Node implements ConnectionEventListener {
     private static final int SEED_PORT = 1050;
     private final ConnectionChannel connectionChannel;
     private final HashMap<String, PeerNode> stablePeers;
-    //stable peers Hashtable with different keys
     private final HashMap<String, PeerNode> ipPeers;
     private final HashMap<String, PeerNode> unknownPeers;
-    private final HashSet<String> ipWaitResponse;
     //TODO public IP and port will be loaded from config file
-    private final String localIP;
+    private final String localIp;
     private final int localPort;
 
     public Node() throws IOException {
@@ -38,9 +38,8 @@ public class Node implements ConnectionEventListener {
         stablePeers = new HashMap<>();
         unknownPeers = new HashMap<>();
         ipPeers = new HashMap<>();
-        ipWaitResponse = new HashSet<>();
         localPort = SEED_PORT;
-        localIP = InetAddress.getLocalHost().getHostAddress();
+        localIp = InetAddress.getLocalHost().getHostAddress();
     }
 
     public Node(int port) throws IOException {
@@ -49,9 +48,8 @@ public class Node implements ConnectionEventListener {
         stablePeers = new HashMap<>();
         unknownPeers = new HashMap<>();
         ipPeers = new HashMap<>();
-        ipWaitResponse = new HashSet<>();
         localPort = port;
-        localIP = InetAddress.getLocalHost().getHostAddress();
+        localIp = InetAddress.getLocalHost().getHostAddress();
     }
 
     public void start() {
@@ -145,7 +143,7 @@ public class Node implements ConnectionEventListener {
         unknownPeers.put(key, peer);
         addTimeOutTask(peer);
         connectionChannel.getExecutorService().submit(new HeartBeatCallable(connectionChannel.getExecutorService(), this, peer, calNextHeartBeat()));
-        System.out.println("New client: " + localIP + ":" + localPort +" received from " + key + "\n");
+        System.out.println("New client: " + localIp + ":" + localPort +" received from " + key + "\n");
     }
 
     @Override
@@ -157,15 +155,13 @@ public class Node implements ConnectionEventListener {
         final String key = getSocketKey(socketChannel);
         final String ip = getServerIp(socketChannel);
         final int port = getServerPort(socketChannel);
-        if (key == null || !ipWaitResponse.contains(ip + ":" + port)) {
+        if (key == null) {
             shutDownConnection(socketChannel);
             return;
         }
-        ipWaitResponse.remove(ip + ":" + port);
 
         try {
-            final IPPackage ipPackage = new IPPackage(PackageHeader.MY_IP, localIP, localPort);
-            startWrite(socketChannel, ByteBufferUtil.convertSerialToQueue(ipPackage), this);
+            sendMyIpTo(socketChannel);
         } catch (IOException e) {
             shutDownConnection(socketChannel);
             return;
@@ -177,14 +173,14 @@ public class Node implements ConnectionEventListener {
         ipPeers.put(ip + ":" + port, peer);
         addTimeOutTask(peer);
         connectionChannel.getExecutorService().submit(new HeartBeatCallable(connectionChannel.getExecutorService(), this, peer, calNextHeartBeat()));
-        System.out.println("Connection complete: " + localIP + ":" + localPort +" connected to " + ip + ":" + port + "\n");
+        System.out.println("Connection complete: " + localIp + ":" + localPort +" connected to " + ip + ":" + port + "\n");
     }
 
     @Override
     public void connFail(AsynchronousSocketChannel socketChannel) {
         final String ip = getServerIp(socketChannel);
         final int port = getServerPort(socketChannel);
-        ipWaitResponse.remove(ip + ":" + port);
+        System.out.println("Connection failed: " + localIp + ":" + localPort +" failed to connect to " + ip + ":" + port + "\n");
     }
 
     @Override
@@ -202,7 +198,7 @@ public class Node implements ConnectionEventListener {
 
     @Override
     public void newReadFail(AsynchronousSocketChannel socketChannel) {
-        System.out.println("Read Fail: " + localIP + ":" + localPort + " on "+ getSocketKey(socketChannel));
+        System.out.println("Read Fail: " + localIp + ":" + localPort + " on "+ getSocketKey(socketChannel));
         shutDownConnection(socketChannel);
     }
 
@@ -212,7 +208,7 @@ public class Node implements ConnectionEventListener {
 
     @Override
     public void writeFail(AsynchronousSocketChannel socketChannel) {
-        System.out.println("Write Fail: " + localIP + ":" + localPort + " on "+ getSocketKey(socketChannel));
+        System.out.println("Write Fail: " + localIp + ":" + localPort + " on "+ getSocketKey(socketChannel));
         shutDownConnection(socketChannel);
     }
 
@@ -246,7 +242,7 @@ public class Node implements ConnectionEventListener {
                         break;
                     case MY_IP:
                         break;
-                    case PEER_IP:
+                    case PEER_IPS:
                         final IPPackage ipPackage;
                         try {
                             ipPackage = cast(IPPackage.class, pack);
@@ -254,11 +250,19 @@ public class Node implements ConnectionEventListener {
                             shutDownConnection(socketChannel);
                             break;
                         }
-                        final String ip = ipPackage.getIp();
-                        final int port = ipPackage.getPort();
-                        if (!ipPeers.containsKey(ip + ":" + port) && (!localIP.equals(ip) || localPort != port) && !ipWaitResponse.contains(ip + ":" + port)) {
-                            connectToPeer(ip, port);
-                            spreadPeerAddress(ip, port, peer.getIp() + ":" + peer.getPort());
+                        for (IpInfo ipInfo : ipPackage.getIps()) {
+                            final String ip = ipInfo.getIp();
+                            final int port = ipInfo.getPort();
+                            if (!ipPeers.containsKey(ip + ":" + port) && (!localIp.equals(ip) || localPort != port)) {
+                                connectToPeer(ip, port);
+                            }
+                        }
+                        break;
+                    case REQUEST_FOR_PEERS:
+                        try {
+                            sendPeerIpsTo(socketChannel);
+                        } catch (IOException e) {
+                            shutDownConnection(socketChannel);
                         }
                         break;
                     default:
@@ -312,20 +316,16 @@ public class Node implements ConnectionEventListener {
                             shutDownConnection(socketChannel);
                             break;
                         }
-                        final String ip = ipPackage.getIp();
-                        final int port = ipPackage.getPort();
+                        if (ipPackage.getIps().size() != 1) {
+                            shutDownConnection(socketChannel);
+                            break;
+                        }
+                        final String ip = ipPackage.getIps().get(0).getIp();
+                        final int port = ipPackage.getIps().get(0).getPort();
                         System.out.println("New IP from " + key + " : " + ip + ":" + port);
-                        ipWaitResponse.remove(ip + ":" + port);
                         if (ipPeers.containsKey(ip + ":" + port)) {
-                            if (localIP.compareTo(ip) > 0 || (localIP.compareTo(ip) == 0 && localPort > port)) {
-                                shutDownConnection(socketChannel);
-                                break;
-                            }
-                            System.out.println("New IP from " + key + " : " + ip + ":" + port + " overwrites old one");
-                            final AsynchronousSocketChannel stableChannel = ipPeers.get(ip + ":" + port).getSocketChannel();
-                            final String stableKey = getSocketKey(stableChannel);
-                            shutDownConnection(stableChannel);
-                            stablePeers.remove(stableKey);
+                            shutDownConnection(socketChannel);
+                            break;
                         }
                         unknownPeers.remove(key);
                         peer.setTimeOut(TimeOutCallable.STABLE_TIME_OUT);
@@ -333,9 +333,22 @@ public class Node implements ConnectionEventListener {
                         peer.setPort(port);
                         stablePeers.put(key, peer);
                         ipPeers.put(ip + ":" + port, peer);
-                        spreadPeerAddress(ip, port, ip + ":" + port);
+                        if (SEED_ADDRESSES.contains(localIp) && localPort == SEED_PORT) {
+                            try {
+                                sendPeerIpsTo(socketChannel);
+                            } catch (IOException e) {
+                                shutDownConnection(socketChannel);
+                            }
+                        }
                         break;
-                    case PEER_IP:
+                    case PEER_IPS:
+                        break;
+                    case REQUEST_FOR_PEERS:
+                        try {
+                            sendPeerIpsTo(socketChannel);
+                        } catch (IOException e) {
+                            shutDownConnection(socketChannel);
+                        }
                         break;
                     default:
                         shutDownConnection(socketChannel);
@@ -347,20 +360,25 @@ public class Node implements ConnectionEventListener {
         return true;
     }
 
-    private void spreadPeerAddress(String ip, int port, String preventDataSource) {
-        final String key = ip + ":" + port;
+    private void sendMyIpTo(AsynchronousSocketChannel socketChannel) throws IOException {
+        final IPPackage myIp = new IPPackage(MY_IP);
+        myIp.addIp(localIp, localPort);
+        startWrite(socketChannel, ByteBufferUtil.convertSerialToQueue(myIp), this);
+    }
+
+    private void sendPeerIpsTo(AsynchronousSocketChannel socketChannel) throws IOException {
+        final IPPackage peerIps = new IPPackage(PEER_IPS);
+        peerIps.addIps(getAllPeerIp());
+        startWrite(socketChannel, ByteBufferUtil.convertSerialToQueue(peerIps), this);
+    }
+
+    private ArrayList<IpInfo> getAllPeerIp() {
+        final ArrayList<IpInfo> peerIps = new ArrayList<>();
         for (Map.Entry<String, PeerNode> peerEntry : ipPeers.entrySet()) {
-            final String curKey = peerEntry.getKey();
-            final String curIP = curKey.split(":")[0];
-            final int curPort = Integer.parseInt(curKey.split(":")[1]);
-            if ((!curIP.equals(localIP) || curPort != localPort) && !curKey.equals(key) && !curKey.equals(preventDataSource)) {
-                final IPPackage ipPackage = new IPPackage(PackageHeader.PEER_IP, ip, port);
-                try {
-                    startWrite(peerEntry.getValue().getSocketChannel(), ByteBufferUtil.convertSerialToQueue(ipPackage), this);
-                } catch (IOException ignored) {
-                }
-            }
+            peerIps.add(peerEntry.getValue().getIpInfo());
         }
+
+        return peerIps;
     }
 
     private void connectToSeedNodes() throws UnknownHostException {
@@ -375,11 +393,10 @@ public class Node implements ConnectionEventListener {
     }
 
     private void connectToPeer(String ip, int port) {
-        if ((localIP.equals(ip) && port == localPort) || ipWaitResponse.contains(ip + ":" + port)){
+        if ((localIp.equals(ip) && port == localPort)){
             return;
         }
-        System.out.println("Connect to peer: " + localIP + ":" + localPort + " tried to connect to " + ip + ":" + port + "\n");
-        ipWaitResponse.add(ip + ":" + port);
+        System.out.println("Connect to peer: " + localIp + ":" + localPort + " tried to connect to " + ip + ":" + port + "\n");
         try {
             connectionChannel.connectToNew(ip, port);
         } catch (IOException ignored) {
@@ -405,12 +422,10 @@ public class Node implements ConnectionEventListener {
         stablePeers.clear();
 
         ipPeers.clear();
-
-        ipWaitResponse.clear();
     }
 
-    public String getLocalIP() {
-        return localIP;
+    public String getLocalIp() {
+        return localIp;
     }
 
     public int getLocalPort() {

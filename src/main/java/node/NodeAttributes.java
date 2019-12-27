@@ -1,29 +1,33 @@
 package node;
 
+import node.nodepackage.IpInfo;
+
 public class NodeAttributes {
-    protected String ip;
-    protected int port;
+    protected final IpInfo ipInfo;
     protected int latency;
 
     public NodeAttributes(String ip, int port) {
-        this.ip = ip;
-        this.port = port;
+        ipInfo = new IpInfo(ip, port);
     }
 
     public String getIp() {
-        return ip;
-    }
-
-    public void setIp(String ip) {
-        this.ip = ip;
+        return ipInfo.getIp();
     }
 
     public int getPort() {
-        return port;
+        return ipInfo.getPort();
+    }
+
+    public void setIp(String ip) {
+        ipInfo.setIp(ip);
     }
 
     public void setPort(int port) {
-        this.port = port;
+        ipInfo.setPort(port);
+    }
+
+    public IpInfo getIpInfo() {
+        return ipInfo;
     }
 
     public int getLatency() {
