@@ -25,6 +25,7 @@ public class Node implements ConnectionEventListener {
             Arrays.asList("10.0.0.5"));
     private static final int SEED_PORT = 1050;
     private final ConnectionChannel connectionChannel;
+    private final HashSet<String> registeredIps;
     private final HashMap<String, PeerNode> stablePeers;
     private final HashMap<String, PeerNode> ipPeers;
     private final HashMap<String, PeerNode> unknownPeers;
@@ -35,6 +36,7 @@ public class Node implements ConnectionEventListener {
     public Node() throws IOException {
         connectionChannel = new ConnectionChannel(SEED_PORT, this);
         this.connectionChannel.getExecutorService().submit(new CheckPeersCallable(System.currentTimeMillis(), this.connectionChannel.getExecutorService(), this));
+        registeredIps = new HashSet<>();
         stablePeers = new HashMap<>();
         unknownPeers = new HashMap<>();
         ipPeers = new HashMap<>();
@@ -45,6 +47,7 @@ public class Node implements ConnectionEventListener {
     public Node(int port) throws IOException {
         connectionChannel = new ConnectionChannel(port, this);
         this.connectionChannel.getExecutorService().submit(new CheckPeersCallable(System.currentTimeMillis(), this.connectionChannel.getExecutorService(), this));
+        registeredIps = new HashSet<>();
         stablePeers = new HashMap<>();
         unknownPeers = new HashMap<>();
         ipPeers = new HashMap<>();
@@ -204,6 +207,9 @@ public class Node implements ConnectionEventListener {
 
     @Override
     public void writeComplete(AsynchronousSocketChannel socketChannel, Integer result) {
+        if (SEED_ADDRESSES.contains(localIp) && localPort == SEED_PORT) {
+            shutDownConnection(socketChannel);
+        }
     }
 
     @Override
@@ -261,6 +267,13 @@ public class Node implements ConnectionEventListener {
                     case REQUEST_FOR_PEERS:
                         try {
                             sendPeerIpsTo(socketChannel);
+                        } catch (IOException e) {
+                            shutDownConnection(socketChannel);
+                        }
+                        break;
+                    case REQUEST_FOR_REG:
+                        try {
+                            sendRegisteredIpsTo(socketChannel);
                         } catch (IOException e) {
                             shutDownConnection(socketChannel);
                         }
@@ -327,25 +340,33 @@ public class Node implements ConnectionEventListener {
                             shutDownConnection(socketChannel);
                             break;
                         }
+                        if (SEED_ADDRESSES.contains(localIp) && localPort == SEED_PORT) {
+                            try {
+                                sendRegisteredIpsTo(socketChannel);
+                            } catch (IOException e) {
+                                shutDownConnection(socketChannel);
+                            }
+                            registeredIps.add(ip + ":" + port);
+                        }
                         unknownPeers.remove(key);
                         peer.setTimeOut(TimeOutCallable.STABLE_TIME_OUT);
                         peer.setIp(ip);
                         peer.setPort(port);
                         stablePeers.put(key, peer);
                         ipPeers.put(ip + ":" + port, peer);
-                        if (SEED_ADDRESSES.contains(localIp) && localPort == SEED_PORT) {
-                            try {
-                                sendPeerIpsTo(socketChannel);
-                            } catch (IOException e) {
-                                shutDownConnection(socketChannel);
-                            }
-                        }
                         break;
                     case PEER_IPS:
                         break;
                     case REQUEST_FOR_PEERS:
                         try {
                             sendPeerIpsTo(socketChannel);
+                        } catch (IOException e) {
+                            shutDownConnection(socketChannel);
+                        }
+                        break;
+                    case REQUEST_FOR_REG:
+                        try {
+                            sendRegisteredIpsTo(socketChannel);
                         } catch (IOException e) {
                             shutDownConnection(socketChannel);
                         }
@@ -368,17 +389,32 @@ public class Node implements ConnectionEventListener {
 
     private void sendPeerIpsTo(AsynchronousSocketChannel socketChannel) throws IOException {
         final IPPackage peerIps = new IPPackage(PEER_IPS);
-        peerIps.addIps(getAllPeerIp());
+        peerIps.addIps(getAllPeerIps());
         startWrite(socketChannel, ByteBufferUtil.convertSerialToQueue(peerIps), this);
     }
 
-    private ArrayList<IpInfo> getAllPeerIp() {
+    private ArrayList<IpInfo> getAllPeerIps() {
         final ArrayList<IpInfo> peerIps = new ArrayList<>();
         for (Map.Entry<String, PeerNode> peerEntry : ipPeers.entrySet()) {
             peerIps.add(peerEntry.getValue().getIpInfo());
         }
 
         return peerIps;
+    }
+
+    private void sendRegisteredIpsTo(AsynchronousSocketChannel socketChannel) throws IOException {
+        final IPPackage ips = new IPPackage(PEER_IPS);
+        ips.addIps(getAllRegisteredIps());
+        startWrite(socketChannel, ByteBufferUtil.convertSerialToQueue(ips), this);
+    }
+
+    private ArrayList<IpInfo> getAllRegisteredIps() {
+        final ArrayList<IpInfo> ips = new ArrayList<>();
+        for (String ip : registeredIps) {
+            ips.add(new IpInfo(ip.split(":")[0], Integer.parseInt(ip.split(":")[1])));
+        }
+
+        return ips;
     }
 
     private void connectToSeedNodes() throws UnknownHostException {
@@ -442,5 +478,9 @@ public class Node implements ConnectionEventListener {
 
     public HashMap<String, PeerNode> getUnknownPeers() {
         return unknownPeers;
+    }
+
+    public HashSet<String> getRegisteredIps() {
+        return registeredIps;
     }
 }

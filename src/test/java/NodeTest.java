@@ -38,15 +38,17 @@ class NodeTest {
         }
 
         for (Node node : seedNodes) {
-            assert node.getStablePeers().size() == NORMAL_NUM;
-            assert node.getIpPeers().size() == NORMAL_NUM;
+            assert node.getStablePeers().size() == 0;
+            assert node.getIpPeers().size() == 0;
             assert node.getUnknownPeers().size() == 0;
+            assert node.getRegisteredIps().size() == NORMAL_NUM;
         }
 
         for (Node node : normalNodes) {
-            assert node.getStablePeers().size() == NORMAL_NUM;
-            assert node.getIpPeers().size() == NORMAL_NUM;
+            assert node.getStablePeers().size() == NORMAL_NUM - 1;
+            assert node.getIpPeers().size() == NORMAL_NUM - 1;
             assert node.getUnknownPeers().size() == 0;
+            assert node.getRegisteredIps().size() == 0;
         }
     }
 
